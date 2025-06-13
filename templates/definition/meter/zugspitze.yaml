@@ -1,0 +1,51 @@
+template: zugspitze-ZINNZ
+products:
+  - brand: WEESS
+    description:
+      generic: Zugspitze
+params:
+  - name: usage
+    choice: ["grid", "battery"]
+  - name: modbus
+    choice: ["rs485"]
+    id: 247
+  - name: capacity
+    advanced: true
+render: |
+  type: custom
+  {{- if eq .usage "grid" }}
+  power:
+    source: modbus
+    {{- include "modbus" . | indent 2 }}
+    register:
+      address: 141 #00 8D
+      type: holding
+      decode: int32
+    scale: -1
+  {{- end }}
+  {{- if eq .usage "battery" }}
+  power:
+    source: calc
+    add:
+    - source: modbus
+      {{- include "modbus" . | indent 4 }}
+      register:
+        address: 14 # batter charge
+        type: holding
+        decode: int32
+    - source: modbus
+      {{- include "modbus" . | indent 4 }}
+      register:
+        address: 15 # battery discharge
+        type: holding
+        decode: int32
+      scale: -1
+  soc:
+    source: modbus
+    {{- include "modbus" . | indent 2 }}
+    register:
+      address: 8 # State of Charge (SOC)
+      type: holding
+      decode: uint16
+  capacity: {{ .capacity }} # kWh
+  {{- end }}
