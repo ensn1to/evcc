@@ -100,7 +100,7 @@
 					<span>{{ $t("header.needHelp") }}</span>
 				</button>
 			</li>
-			<li>
+			<!-- <li>
 				<a class="dropdown-item d-flex" href="https://evcc.io/" target="_blank">
 					<span>evcc.io</span>
 					<shopicon-regular-newtab
@@ -108,7 +108,7 @@
 						class="ms-2 external"
 					></shopicon-regular-newtab>
 				</a>
-			</li>
+			</li> -->
 			<li v-if="isApp">
 				<button type="button" class="dropdown-item" @click="openNativeSettings">
 					{{ $t("header.nativeSettings") }}
