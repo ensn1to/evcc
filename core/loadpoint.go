@@ -74,6 +74,8 @@ type Task = func()
 
 // Loadpoint is responsible for controlling charge depending on
 // Soc needs and power availability.
+// The Loadpoint controls an individual charging station.
+// It communicates with the charger to enable/disable charging and set current limits, and it monitors the vehicle to track charging progress
 type Loadpoint struct {
 	clock    clock.Clock // mockable time
 	bus      evbus.Bus   // event bus
@@ -1781,7 +1783,8 @@ func (lp *Loadpoint) phaseSwitchCompleted() bool {
 }
 
 // Update is the main control function. It reevaluates meters and charger state
-func (lp *Loadpoint) Update(sitePower, batteryBoostPower float64, rates api.Rates, batteryBuffered, batteryStart bool, greenShare float64, effPrice, effCo2 *float64) {
+// 更新充电桩的充电策略
+func (lp *Loadpoint) Update(sitePower, batteryBoostPower float64, rates api.Rates, isBatteryBuffered, isBatteryStart bool, greenShare float64, effPrice, effCo2 *float64) {
 	// smart cost
 	smartCostActive := lp.smartCostActive(rates)
 	lp.publish(keys.SmartCostActive, smartCostActive)
@@ -1908,7 +1911,7 @@ func (lp *Loadpoint) Update(sitePower, batteryBoostPower float64, rates api.Rate
 			break
 		}
 
-		targetCurrent := lp.pvMaxCurrent(mode, sitePower, batteryBoostPower, batteryBuffered, batteryStart)
+		targetCurrent := lp.pvMaxCurrent(mode, sitePower, batteryBoostPower, isBatteryBuffered, isBatteryStart)
 
 		if targetCurrent == 0 && lp.vehicleClimateActive() {
 			targetCurrent = lp.effectiveMinCurrent()
