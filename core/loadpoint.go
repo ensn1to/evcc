@@ -1786,6 +1786,7 @@ func (lp *Loadpoint) phaseSwitchCompleted() bool {
 // 更新充电桩的充电策略
 func (lp *Loadpoint) Update(sitePower, batteryBoostPower float64, rates api.Rates, isBatteryBuffered, isBatteryStart bool, greenShare float64, effPrice, effCo2 *float64) {
 	// smart cost
+	// 判断当前是否是低价时段，以及下个低电价时段
 	smartCostActive := lp.smartCostActive(rates)
 	lp.publish(keys.SmartCostActive, smartCostActive)
 
@@ -1799,9 +1800,11 @@ func (lp *Loadpoint) Update(sitePower, batteryBoostPower float64, rates api.Rate
 	lp.processTasks()
 
 	// read and publish meters first- charge power and currents have already been updated by the site
+	// 更新站点ev的相关电压，电流信息
 	lp.updateChargeVoltages()
 	lp.phasesFromChargeCurrents()
 
+	// 更新绿色比例、电价、碳排放因子
 	lp.energyMetrics.SetEnvironment(greenShare, effPrice, effCo2)
 
 	// update ChargeRater here to make sure initial meter update is caught
@@ -1832,6 +1835,7 @@ func (lp *Loadpoint) Update(sitePower, batteryBoostPower float64, rates api.Rate
 	}
 
 	// identify connected vehicle
+	// 如果车辆未被识别且充电桩不集成设备，则尝试通过VIN或状态识别车辆
 	if lp.connected() && !lp.chargerHasFeature(api.IntegratedDevice) {
 		// read identity and run associated action
 		lp.identifyVehicle()

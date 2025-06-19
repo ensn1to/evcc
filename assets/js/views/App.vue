@@ -53,7 +53,7 @@ export default {
 		return { reconnectTimeout: null, ws: null, authNotConfigured: false };
 	},
 	head() {
-		return { title: "...", titleTemplate: "%s | evcc" };
+		return { title: "...", titleTemplate: "%s" };
 	},
 	computed: {
 		version() {

@@ -880,6 +880,7 @@ func (site *Site) updateLoadpoints(rates api.Rates) float64 {
 	return sum
 }
 
+// 获取到某个wallbox(loadpoint)信号后，根据当前site的数据更新调整当前wallbox的功率已经更新site
 func (site *Site) update(lp updater) {
 	site.log.DEBUG.Println("----")
 
@@ -937,11 +938,14 @@ func (site *Site) update(lp updater) {
 		// 计算家庭负载使用绿电和充电桩(loadpoint)的绿电使用比例
 		// add battery charging power to homePower to ignore all consumption which does not occur on loadpoints
 		// fix for: https://github.com/evcc-io/evcc/issues/11032
+		// 将电池充电功率算在家庭负载功率,nonChargePower为纯可用在充电的负载功率
 		nonChargePower := homePower + max(0, -site.batteryPower)
+		// 可用于家庭负载使用绿电
 		greenShareHome := site.greenShare(0, homePower)
+		// 可用于充电桩(loadpoint)绿电
 		greenShareLoadpoints := site.greenShare(nonChargePower, nonChargePower+totalChargePower)
 
-		// 更新充电桩(loadpoint)充电策略
+		// 调整充电桩(loadpoint)充电策略
 		lp.Update(
 			sitePower, max(0, site.batteryPower), rates, batteryBuffered, batteryStart,
 			greenShareLoadpoints, site.effectivePrice(greenShareLoadpoints), site.effectiveCo2(greenShareLoadpoints),
