@@ -1,5 +1,5 @@
 network:
-  # host: 0.0.0.0  # Listen on all interfaces
+  host: 192.168.9.8  # Use specific IP to avoid mDNS issues
   port: 7070
 
 log: debug
@@ -36,25 +36,16 @@ javascript:
 
 meters:
   - name: battery-zug
-    type: custom
-    power:
-      source: js
-      vm: shared
-      script: state.batterypower;
-    soc:
-      source: js
-      vm: shared
-      script: |
-        if (state.batterypower < 0) state.batterySoc++; else state.batterySoc--;
-        if (state.batterySoc < 10) state.batterySoc = 90;
-        if (state.batterySoc > 90) state.batterySoc = 10;
-        state.batterySoc;
-    capacity: 13.4
-    batterymode:
-      source: js
-      vm: shared
-      script: |
-        1
+    type: template
+    template: zugspitze-ZINNZ
+    usage: battery
+
+    modbus: rs485serial
+    id: 247
+    device: /dev/ttyUSB0
+    baudrate: 115200
+    comset: "8N1"
+    capacity: 12
     
 
 chargers:
@@ -141,33 +132,39 @@ tariffs:
 eebus:
   shipid: EVCC-1234567890abcdef
   interfaces:
-   - en0  # 主网络接口，根据您的系统调整
+    - en0  # 主网络接口，根据您的系统调整
   certificate:
     public: |
       -----BEGIN CERTIFICATE-----
-      MIIBvDCCAWOgAwIBAgIRA37PisKT4F6cyQSI0MNmrM8wCgYIKoZIzj0EAwIwPjEL
-      MAkGA1UEBhMCREUxDTALBgNVBAoTBEVWQ0MxCTAHBgNVBAsTADEVMBMGA1UEAwwM
-      RVZDQ19IRU1TXzAxMB4XDTI1MDcxNjAzMzA1OVoXDTM1MDcxNDAzMzA1OVowPjEL
-      MAkGA1UEBhMCREUxDTALBgNVBAoTBEVWQ0MxCTAHBgNVBAsTADEVMBMGA1UEAwwM
-      RVZDQ19IRU1TXzAxMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaYSo9OjCF0A9
-      dspTA4nclz4PeozKKg+XE8AbfkIsu6bcOQx1Wi4SXVQKtUFlGBrbmiN5G0x6YJvi
-      FKIl+hMweqNCMEAwDgYDVR0PAQH/BAQDAgeAMA8GA1UdEwEB/wQFMAMBAf8wHQYD
-      VR0OBBYEFK/RisS3VlxF0bzmXpFbrDStiCueMAoGCCqGSM49BAMCA0cAMEQCIAsp
-      lLWlX5h6YcLqMWQasJIpx8B9IidQ73fYzF+xZSQMAiBgRqcHyMse/fKDCKQT5Ddv
-      Tz3oBjeQiUNMexKPUgd7Zw==
+      MIIBxTCCAWugAwIBAgIRA4ViZUBQJWWTtB7WJOg0SVIwCgYIKoZIzj0EAwIwQjEL
+      MAkGA1UEBhMCREUxDTALBgNVBAoTBERlbW8xDTALBgNVBAsTBERlbW8xFTATBgNV
+      BAMTDERlbW8tVW5pdC0wMjAeFw0yNTA3MTAwMzIyNDVaFw0zNTA3MDgwMzIyNDVa
+      MEIxCzAJBgNVBAYTAkRFMQ0wCwYDVQQKEwREZW1vMQ0wCwYDVQQLEwREZW1vMRUw
+      EwYDVQQDEwxEZW1vLVVuaXQtMDIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATj
+      RUpr5JHAKit1L63d6V5dL3BHlwO425DM+tuljEMPOu4qQ9h3bEtMnG6XvVbuhvmr
+      ubG+U3K6DUpECillr67Vo0IwQDAOBgNVHQ8BAf8EBAMCB4AwDwYDVR0TAQH/BAUw
+      AwEB/zAdBgNVHQ4EFgQU4Y2flYTd6jrHNhq7DNya86954fEwCgYIKoZIzj0EAwID
+      SAAwRQIgJB4U6Qt6wqEEDB48gNCCspz3+fWxiA7DeB/puL+dspcCIQCdZ27LbzEm
+      vaSRhSZLM+nd3p9lkAMrUL3sLveO7zqwtQ==
       -----END CERTIFICATE-----
 
     private: |
       -----BEGIN EC PRIVATE KEY-----
-      MHcCAQEEIClrYjxChW86z89poeigfZ/j2tXwodhrqgCMosD4i+fRoAoGCCqGSM49
-      AwEHoUQDQgAEaYSo9OjCF0A9dspTA4nclz4PeozKKg+XE8AbfkIsu6bcOQx1Wi4S
-      XVQKtUFlGBrbmiN5G0x6YJviFKIl+hMweg==
+      MHcCAQEEIEBQiyZ8Sfndn16ZHzs3atxhtjTg7J9LRCnhODNGU2NboAoGCCqGSM49
+      AwEHoUQDQgAE40VKa+SRwCordS+t3eleXS9wR5cDuNuQzPrbpYxDDzruKkPYd2xL
+      TJxul71W7ob5q7mxvlNyug1KRAopZa+u1Q==
       -----END EC PRIVATE KEY-----
 
 
 hems:
   type: eebus
-  ski: afd18ac4b7565c45d1bce65e915bac34ad882b9e
+  ski: 61c1677efd524e238156aa91cf8a2f5ef52cfe82
+  # 增加连接超时配置
+  limits:
+    contractualConsumptionNominalMax: 24800
+    consumptionLimit: 0
+    failsafeConsumptionActivePowerLimit: 4200
+    failsafeDurationMinimum: 2h
 
 circuits:
   - name: main # eindeutiger Name, wird als Referenz für andere Circuits verwendet
