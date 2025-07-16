@@ -1,0 +1,177 @@
+network:
+  # host: 0.0.0.0  # Listen on all interfaces
+  port: 7070
+
+log: debug
+
+plant: eeae1e651abbdb6bd4deecdb7caf6feb3f0292cef776fc0c4c6af9d4541fa524
+
+# interval: 40s
+
+# mqtt message broker†
+# mqtt:
+#   broker: ems-mqtt-test-1.wlcz.work:28883
+#   topic:  # root topic for publishing, set empty to disable publishing
+#   clientid: smartgateway
+#   user: device-test
+#   password: 79bef19d5eb242d71458d9ae6c120344
+
+javascript:
+  - vm: shared
+    script: |
+      state = {
+        residualpower: 500,
+        pvpower: 5000,
+        batterypower: -750,
+        batterySoc: 55,
+        gridpower: -1000,
+        loadpoints: [
+          { enabled: true, vehicleSoc: 62, maxcurrent: 6, phases: 1, chargepower: 0 },
+          { enabled: false, vehicleSoc: 22, maxcurrent: 0, phases: 3, chargepower: 0 }
+        ]
+      };
+      function logState() {
+        console.log("state:", JSON.stringify(state));
+      }
+
+meters:
+  - name: battery-zug
+    type: custom
+    power:
+      source: js
+      vm: shared
+      script: state.batterypower;
+    soc:
+      source: js
+      vm: shared
+      script: |
+        if (state.batterypower < 0) state.batterySoc++; else state.batterySoc--;
+        if (state.batterySoc < 10) state.batterySoc = 90;
+        if (state.batterySoc > 90) state.batterySoc = 10;
+        state.batterySoc;
+    capacity: 13.4
+    batterymode:
+      source: js
+      vm: shared
+      script: |
+        1
+    
+
+chargers:
+  - name: charger_1
+    type: custom
+    enable:
+      source: js
+      vm: shared
+      script: |
+        // logState();
+        var lp = state.loadpoints[0];
+        lp.enabled = enable;
+        enable;
+      out:
+        - name: enable
+          type: bool
+          config:
+            source: js
+            vm: shared
+            script: |
+              if (enable) lp.chargepower = lp.maxcurrent * 230 * lp.phases; else lp.chargepower = 0;
+    enabled:
+      source: js
+      vm: shared
+      script: |
+        state.loadpoints[0].enabled;
+    status:
+      source: js
+      vm: shared
+      script: |
+        if (state.loadpoints[0].enabled) "C"; else "B";
+    maxcurrent:
+      source: js
+      vm: shared
+      script: |
+        // logState();
+        var lp = state.loadpoints[0];
+        lp.maxcurrent = maxcurrent;
+        if (lp.enabled) lp.chargepower = lp.maxcurrent * 230 * lp.phases; else lp.chargepower = 0;
+
+site:
+  title: Zuhause
+  meters:
+    battery: battery-zug
+
+loadpoints:
+  - title: Carport
+    charger: charger_1
+    circuit: main
+    mode: pv
+    # vehicle: vehicle_1
+  # - title: Garage
+  #   charger: charger_2
+  #   mode: "off"
+  #   meter: meter_charger_2
+  #   vehicle: vehicle_2
+
+tariffs:
+  currency: EUR # three letter ISO-4217 currency code (default EUR)
+  grid:
+    type: template
+    template: energy-charts-api # epex spot market prices
+    bzn: DE-LU
+    charges: 0.15
+  feedin:
+    type: fixed
+    price: 0.08 # EUR/kWh
+  co2:
+    type: template
+    template: grünstromindex
+    zip: 10115
+  solar:
+    - type: template
+      template: forecast-solar
+      lat: 55.7351 # Latitude
+      lon: 9.1275 # Longitude
+      dec: 25 # Decline, 0 = horizontal, 90 = vertical
+      kwp: 9.8 # Maximum generator power (kWp)
+      az: 180 # Azimuth, -180 = north, -90 = east, 0 = south, 90 = west, 180 = north
+      # horizon: 0,0,15,30,45,60,60,60,45,30,15,0 # Horizon, Simulates terrain shadows, [more information](https://doc.forecast.solar/horizon) (optional)
+      # apikey: # API Key, optional
+      interval: 1h # Interval, optional
+
+eebus:
+  shipid: EVCC-1234567890abcdef
+  interfaces:
+   - en0  # 主网络接口，根据您的系统调整
+  certificate:
+    public: |
+      -----BEGIN CERTIFICATE-----
+      MIIBvDCCAWOgAwIBAgIRA37PisKT4F6cyQSI0MNmrM8wCgYIKoZIzj0EAwIwPjEL
+      MAkGA1UEBhMCREUxDTALBgNVBAoTBEVWQ0MxCTAHBgNVBAsTADEVMBMGA1UEAwwM
+      RVZDQ19IRU1TXzAxMB4XDTI1MDcxNjAzMzA1OVoXDTM1MDcxNDAzMzA1OVowPjEL
+      MAkGA1UEBhMCREUxDTALBgNVBAoTBEVWQ0MxCTAHBgNVBAsTADEVMBMGA1UEAwwM
+      RVZDQ19IRU1TXzAxMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEaYSo9OjCF0A9
+      dspTA4nclz4PeozKKg+XE8AbfkIsu6bcOQx1Wi4SXVQKtUFlGBrbmiN5G0x6YJvi
+      FKIl+hMweqNCMEAwDgYDVR0PAQH/BAQDAgeAMA8GA1UdEwEB/wQFMAMBAf8wHQYD
+      VR0OBBYEFK/RisS3VlxF0bzmXpFbrDStiCueMAoGCCqGSM49BAMCA0cAMEQCIAsp
+      lLWlX5h6YcLqMWQasJIpx8B9IidQ73fYzF+xZSQMAiBgRqcHyMse/fKDCKQT5Ddv
+      Tz3oBjeQiUNMexKPUgd7Zw==
+      -----END CERTIFICATE-----
+
+    private: |
+      -----BEGIN EC PRIVATE KEY-----
+      MHcCAQEEIClrYjxChW86z89poeigfZ/j2tXwodhrqgCMosD4i+fRoAoGCCqGSM49
+      AwEHoUQDQgAEaYSo9OjCF0A9dspTA4nclz4PeozKKg+XE8AbfkIsu6bcOQx1Wi4S
+      XVQKtUFlGBrbmiN5G0x6YJviFKIl+hMweg==
+      -----END EC PRIVATE KEY-----
+
+
+hems:
+  type: eebus
+  ski: afd18ac4b7565c45d1bce65e915bac34ad882b9e
+
+circuits:
+  - name: main # eindeutiger Name, wird als Referenz für andere Circuits verwendet
+    title: HomeCircuits # Anzeige in der UI (später)
+    # maxCurrent: 63 # 63A (optional)
+    # maxPower: 30000 # 30kW (optional)
+    # meter: grid # optional

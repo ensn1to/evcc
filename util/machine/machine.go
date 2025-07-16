@@ -39,11 +39,12 @@ func RandomID() string {
 // ID returns the platform specific machine id of the current host OS.
 // If ID cannot be generated, a random value is suggested.
 func ID() (string, error) {
+	// log := util.NewLogger("openwb")
 	if id == "" {
 		var err error
 		if id, err = machineid.ID(); err != nil {
-			rid := RandomID()
-			return "", fmt.Errorf("could not get %w; for manual configuration use plant: %s", err, rid)
+			id = RandomID()
+			// log.WARN.Printf("could not get %v; for manual configuration use plant: %s", err, id)
 		}
 	}
 
