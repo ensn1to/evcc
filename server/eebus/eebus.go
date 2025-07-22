@@ -105,11 +105,12 @@ func NewServer(other Config) (*EEBus, error) {
 	}
 
 	// TODO: get the voltage from the site
+	// 增加TLS握手超时时间以支持双向TLS认证
 	configuration, err := eebusapi.NewConfiguration(
 		BrandName, BrandName, Model, serial,
 		model.DeviceTypeTypeEnergyManagementSystem,
 		[]model.EntityTypeType{model.EntityTypeTypeCEM},
-		port, certificate, time.Second*4,
+		port, certificate, time.Second*120,
 	)
 	if err != nil {
 		return nil, err

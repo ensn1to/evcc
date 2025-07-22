@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        .info { background: #e3f2fd; color: #1565c0; }
+    </style>
+</head>
+<body>
+    <h1>Frontend WebSocket Debug</h1>
+    <div id="status">Connecting...</div>
+    <div id="qrcode-status">QR Code: Not received</div>
+    <div id="logs"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const qrcodeDiv = document.getElementById('qrcode-status');
+        const logsDiv = document.getElementById('logs');
+        
+        let qrcode = "";
+        
+        function log(message, type = 'info') {
+            console.log(message);
+            const logEntry = document.createElement('div');
+            logEntry.className = `log ${type}`;
+            logEntry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        function updateQRCode(newQrcode) {
+            qrcode = newQrcode;
+            if (qrcode === "") {
+                qrcodeDiv.innerHTML = 'QR Code: Not received (empty string)';
+                qrcodeDiv.style.color = 'red';
+            } else {
+                qrcodeDiv.innerHTML = `QR Code: Received (${qrcode.length} chars)`;
+                qrcodeDiv.style.color = 'green';
+            }
+            
+            // Check the condition used in the Vue component
+            const shouldShowNotRunning = (qrcode === "");
+            log(`QR Code updated: "${qrcode.substring(0, 50)}..." (${qrcode.length} chars)`, 'success');
+            log(`Should show "not running": ${shouldShowNotRunning}`, shouldShowNotRunning ? 'error' : 'success');
+        }
+        
+        // Connect to WebSocket
+        log('Connecting to ws://localhost:7071/ws...', 'info');
+        const ws = new WebSocket('ws://localhost:7071/ws');
+        
+        ws.onopen = function() {
+            statusDiv.innerHTML = 'Connected!';
+            statusDiv.style.color = 'green';
+            log('WebSocket connected successfully', 'success');
+            
+            // Send GetEntityList request (Type: 4)
+            const msg1 = JSON.stringify({Type: 4});
+            ws.send(msg1);
+            log(`Sent GetEntityList: ${msg1}`, 'info');
+            
+            // Send GetAllData request (Type: 5)
+            const msg2 = JSON.stringify({Type: 5});
+            ws.send(msg2);
+            log(`Sent GetAllData: ${msg2}`, 'info');
+        };
+        
+        ws.onmessage = function(event) {
+            log(`Raw message received: ${event.data}`, 'info');
+            
+            try {
+                const message = JSON.parse(event.data);
+                log(`Parsed message: Type=${message.Type}, Text=${message.Text ? message.Text.substring(0, 50) + '...' : 'undefined'}`, 'info');
+                
+                if (message.Type === 1) { // QRCode
+                    log('QRCode message detected!', 'success');
+                    updateQRCode(message.Text || "");
+                } else {
+                    log(`Other message type: ${message.Type}`, 'info');
+                }
+            } catch (e) {
+                log(`Error parsing message: ${e}`, 'error');
+            }
+        };
+        
+        ws.onerror = function(error) {
+            statusDiv.innerHTML = 'Connection Error';
+            statusDiv.style.color = 'red';
+            log(`WebSocket error: ${error}`, 'error');
+        };
+        
+        ws.onclose = function(event) {
+            statusDiv.innerHTML = 'Connection Closed';
+            statusDiv.style.color = 'orange';
+            log(`WebSocket connection closed: Code=${event.code}, Reason=${event.reason}`, 'error');
+        };
+    </script>
+</body>
+</html>

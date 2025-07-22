@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    <div id="qrcode"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+        const qrcodeDiv = document.getElementById('qrcode');
+        
+        function log(message) {
+            console.log(message);
+            messagesDiv.innerHTML += '<p>' + message + '</p>';
+        }
+        
+        // Connect to WebSocket
+        const ws = new WebSocket('ws://localhost:7071/ws');
+        
+        ws.onopen = function() {
+            statusDiv.innerHTML = 'Connected!';
+            statusDiv.style.color = 'green';
+            log('WebSocket connected successfully');
+            
+            // Send GetEntityList request
+            ws.send(JSON.stringify({Type: 4}));
+            log('Sent GetEntityList request');
+            
+            // Send GetAllData request
+            ws.send(JSON.stringify({Type: 5}));
+            log('Sent GetAllData request');
+        };
+        
+        ws.onmessage = function(event) {
+            log('Received: ' + event.data);
+            try {
+                const message = JSON.parse(event.data);
+                if (message.Type === 1) { // QRCode
+                    qrcodeDiv.innerHTML = '<h3>QR Code:</h3><pre>' + message.Text + '</pre>';
+                    statusDiv.innerHTML = 'Backend is running! QR Code received.';
+                }
+            } catch (e) {
+                log('Error parsing message: ' + e);
+            }
+        };
+        
+        ws.onerror = function(error) {
+            statusDiv.innerHTML = 'Connection Error';
+            statusDiv.style.color = 'red';
+            log('WebSocket error: ' + error);
+        };
+        
+        ws.onclose = function() {
+            statusDiv.innerHTML = 'Connection Closed';
+            statusDiv.style.color = 'orange';
+            log('WebSocket connection closed');
+        };
+    </script>
+</body>
+</html>

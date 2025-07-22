@@ -8,7 +8,7 @@ import (
 	"github.com/evcc-io/evcc/api"
 )
 
-const registerTimeout = 90 * time.Second
+const registerTimeout = 300 * time.Second // 增加到5分钟
 
 type Connector struct {
 	once     sync.Once
