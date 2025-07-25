@@ -466,6 +466,10 @@ func (h *controlbox) ServicePairingDetailUpdate(ski string, detail *shipapi.Conn
 	switch detail.State() {
 	case shipapi.ConnectionStateRemoteDeniedTrust:
 		log.Printf("❌ [PAIRING] Remote service %s denied trust", ski)
+		log.Printf("🔍 [PAIRING] 可能的原因:")
+		log.Printf("   - 证书不匹配或无效")
+		log.Printf("   - SKI不在对方的信任列表中")
+		log.Printf("   - 对方设备拒绝新的配对请求")
 		if ski == remoteSki {
 			log.Printf("🚨 [PAIRING] Target remote service denied trust. Exiting.")
 			h.myService.CancelPairingWithSKI(ski)
@@ -476,14 +480,31 @@ func (h *controlbox) ServicePairingDetailUpdate(ski string, detail *shipapi.Conn
 	case shipapi.ConnectionStateError:
 		log.Printf("💥 [PAIRING] Connection error for %s: %v", ski, detail.Error())
 		if detail.Error() != nil {
-			log.Printf("🔍 [PAIRING] Error details: %s", detail.Error().Error())
+			errorMsg := detail.Error().Error()
+			log.Printf("🔍 [PAIRING] Error details: %s", errorMsg)
+
+			// 分析常见错误
+			if strings.Contains(errorMsg, "no such host") {
+				log.Printf("🌐 [PAIRING] DNS解析失败 - 检查主机名或使用IP地址")
+			} else if strings.Contains(errorMsg, "connection refused") {
+				log.Printf("🔌 [PAIRING] 连接被拒绝 - 检查目标端口是否开放")
+			} else if strings.Contains(errorMsg, "timeout") {
+				log.Printf("⏰ [PAIRING] 连接超时 - 检查网络连通性和防火墙")
+			} else if strings.Contains(errorMsg, "certificate") {
+				log.Printf("🔐 [PAIRING] 证书问题 - 检查证书配置")
+			} else if strings.Contains(errorMsg, "Node rejected") {
+				log.Printf("🚫 [PAIRING] 节点被应用层拒绝 - 检查SKI配置和信任设置")
+			}
 		}
 	case shipapi.ConnectionStateReceivedPairingRequest:
 		log.Printf("📨 [PAIRING] Received pairing request from %s", ski)
+		log.Printf("🤝 [PAIRING] 准备接受配对请求")
 	case shipapi.ConnectionStateInitiated:
 		log.Printf("🚀 [PAIRING] Connection initiated with %s", ski)
+		log.Printf("⏳ [PAIRING] 等待连接建立...")
 	case shipapi.ConnectionStateCompleted:
 		log.Printf("✅ [PAIRING] Connection completed with %s", ski)
+		log.Printf("🎉 [PAIRING] 连接成功建立!")
 	default:
 		log.Printf("📋 [PAIRING] Connection state for %s: %s", ski, detail.State())
 	}
