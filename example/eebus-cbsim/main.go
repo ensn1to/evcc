@@ -195,6 +195,10 @@ type controlbox struct {
 	consumptionFailsafeLimits failsafeLimits
 	productionFailsafeLimits  failsafeLimits
 
+	// Auto-restore timers for limits
+	consumptionRestoreTimer *time.Timer
+	productionRestoreTimer  *time.Timer
+
 	// Context for graceful shutdown
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -413,6 +417,16 @@ func (h *controlbox) shutdown() {
 		h.cancel()
 	}
 
+	// Stop auto-restore timers
+	if h.consumptionRestoreTimer != nil {
+		h.consumptionRestoreTimer.Stop()
+		log.Println("Stopped consumption restore timer")
+	}
+	if h.productionRestoreTimer != nil {
+		h.productionRestoreTimer.Stop()
+		log.Println("Stopped production restore timer")
+	}
+
 	// Shutdown eebus service
 	if h.myService != nil {
 		h.myService.Shutdown()
@@ -530,6 +544,45 @@ func (h *controlbox) sendConsumptionLimit(entity spineapi.EntityRemoteInterface)
 		return
 	}
 	fmt.Println("Sent consumption limit to", entity.Device().Ski(), "with msgCounter", msgCounter)
+
+	// 如果限制是激活的，设置10分钟后自动恢复（取消限制）
+	if h.consumptionLimits.IsActive {
+		// 取消之前的定时器（如果存在）
+		if h.consumptionRestoreTimer != nil {
+			h.consumptionRestoreTimer.Stop()
+		}
+
+		// 设置10分钟后恢复限制的定时器
+		h.consumptionRestoreTimer = time.AfterFunc(10*time.Minute, func() {
+			fmt.Println("Auto-restoring consumption limit after 10 minutes...")
+			
+			// 创建一个非激活的限制来恢复
+			restoreLimit := ucapi.LoadLimit{
+				IsActive: false,
+				Value:    h.consumptionLimits.Value,
+				Duration: h.consumptionLimits.Duration,
+			}
+			
+			restoreResultCB := func(msg model.ResultDataType) {
+				if *msg.ErrorNumber == model.ErrorNumberTypeNoError {
+					fmt.Println("Consumption limit auto-restore accepted.")
+				} else {
+					fmt.Println("Consumption limit auto-restore rejected. Code", *msg.ErrorNumber, "Description", *msg.Description)
+				}
+			}
+			
+			// 发送恢复限制
+			if msgCounter, err := h.uclpc.WriteConsumptionLimit(entity, restoreLimit, restoreResultCB); err != nil {
+				fmt.Println("Failed to auto-restore consumption limit", err)
+			} else {
+				fmt.Println("Auto-restored consumption limit to", entity.Device().Ski(), "with msgCounter", msgCounter)
+				// 更新本地状态
+				h.consumptionLimits = restoreLimit
+			}
+		})
+		
+		fmt.Println("Set auto-restore timer for consumption limit (10 minutes)")
+	}
 }
 
 func (h *controlbox) sendConsumptionFailsafeLimit(entity spineapi.EntityRemoteInterface) {
@@ -651,6 +704,45 @@ func (h *controlbox) sendProductionLimit(entity spineapi.EntityRemoteInterface) 
 		return
 	}
 	fmt.Println("Sent production limit to", entity.Device().Ski(), "with msgCounter", msgCounter)
+
+	// 如果限制是激活的，设置10分钟后自动恢复（取消限制）
+	if h.productionLimits.IsActive {
+		// 取消之前的定时器（如果存在）
+		if h.productionRestoreTimer != nil {
+			h.productionRestoreTimer.Stop()
+		}
+
+		// 设置10分钟后恢复限制的定时器
+		h.productionRestoreTimer = time.AfterFunc(10*time.Minute, func() {
+			fmt.Println("Auto-restoring production limit after 10 minutes...")
+			
+			// 创建一个非激活的限制来恢复
+			restoreLimit := ucapi.LoadLimit{
+				IsActive: false,
+				Value:    h.productionLimits.Value,
+				Duration: h.productionLimits.Duration,
+			}
+			
+			restoreResultCB := func(msg model.ResultDataType) {
+				if *msg.ErrorNumber == model.ErrorNumberTypeNoError {
+					fmt.Println("Production limit auto-restore accepted.")
+				} else {
+					fmt.Println("Production limit auto-restore rejected. Code", *msg.ErrorNumber, "Description", *msg.Description)
+				}
+			}
+			
+			// 发送恢复限制
+			if msgCounter, err := h.uclpp.WriteProductionLimit(entity, restoreLimit, restoreResultCB); err != nil {
+				fmt.Println("Failed to auto-restore production limit", err)
+			} else {
+				fmt.Println("Auto-restored production limit to", entity.Device().Ski(), "with msgCounter", msgCounter)
+				// 更新本地状态
+				h.productionLimits = restoreLimit
+			}
+		})
+		
+		fmt.Println("Set auto-restore timer for production limit (10 minutes)")
+	}
 }
 
 func (h *controlbox) sendProductiomFailsafeLimit(entity spineapi.EntityRemoteInterface) {
