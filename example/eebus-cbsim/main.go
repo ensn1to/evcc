@@ -563,6 +563,9 @@ func (h *controlbox) sendConsumptionLimit(entity spineapi.EntityRemoteInterface)
 				Duration: h.consumptionLimits.Duration,
 			}
 			
+			// 更新本地状态
+			h.consumptionLimits = restoreLimit
+			
 			restoreResultCB := func(msg model.ResultDataType) {
 				if *msg.ErrorNumber == model.ErrorNumberTypeNoError {
 					fmt.Println("Consumption limit auto-restore accepted.")
@@ -571,14 +574,21 @@ func (h *controlbox) sendConsumptionLimit(entity spineapi.EntityRemoteInterface)
 				}
 			}
 			
-			// 发送恢复限制
-			if msgCounter, err := h.uclpc.WriteConsumptionLimit(entity, restoreLimit, restoreResultCB); err != nil {
-				fmt.Println("Failed to auto-restore consumption limit", err)
-			} else {
-				fmt.Println("Auto-restored consumption limit to", entity.Device().Ski(), "with msgCounter", msgCounter)
-				// 更新本地状态
-				h.consumptionLimits = restoreLimit
+			// 发送恢复限制到所有连接的实体
+			for _, remoteEntityScenario := range h.uclpc.RemoteEntitiesScenarios() {
+				if msgCounter, err := h.uclpc.WriteConsumptionLimit(remoteEntityScenario.Entity, restoreLimit, restoreResultCB); err != nil {
+					fmt.Println("Failed to auto-restore consumption limit", err)
+				} else {
+					fmt.Println("Auto-restored consumption limit to", remoteEntityScenario.Entity.Device().Ski(), "with msgCounter", msgCounter)
+				}
 			}
+			
+			// 通知前端界面更新
+			frontend.sendLimit(GetConsumptionLimit, "LPC", ucapi.LoadLimit{
+				IsActive: restoreLimit.IsActive,
+				Duration: restoreLimit.Duration / time.Second,
+				Value:    restoreLimit.Value,
+			})
 		})
 		
 		fmt.Println("Set auto-restore timer for consumption limit (10 minutes)")
@@ -723,6 +733,9 @@ func (h *controlbox) sendProductionLimit(entity spineapi.EntityRemoteInterface) 
 				Duration: h.productionLimits.Duration,
 			}
 			
+			// 更新本地状态
+			h.productionLimits = restoreLimit
+			
 			restoreResultCB := func(msg model.ResultDataType) {
 				if *msg.ErrorNumber == model.ErrorNumberTypeNoError {
 					fmt.Println("Production limit auto-restore accepted.")
@@ -731,36 +744,25 @@ func (h *controlbox) sendProductionLimit(entity spineapi.EntityRemoteInterface) 
 				}
 			}
 			
-			// 发送恢复限制
-			if msgCounter, err := h.uclpp.WriteProductionLimit(entity, restoreLimit, restoreResultCB); err != nil {
-				fmt.Println("Failed to auto-restore production limit", err)
-			} else {
-				fmt.Println("Auto-restored production limit to", entity.Device().Ski(), "with msgCounter", msgCounter)
-				// 更新本地状态
-				h.productionLimits = restoreLimit
+			// 发送恢复限制到所有连接的实体
+			for _, remoteEntityScenario := range h.uclpp.RemoteEntitiesScenarios() {
+				if msgCounter, err := h.uclpp.WriteProductionLimit(remoteEntityScenario.Entity, restoreLimit, restoreResultCB); err != nil {
+					fmt.Println("Failed to auto-restore production limit", err)
+				} else {
+					fmt.Println("Auto-restored production limit to", remoteEntityScenario.Entity.Device().Ski(), "with msgCounter", msgCounter)
+				}
 			}
+			
+			// 通知前端界面更新
+			frontend.sendLimit(GetProductionLimit, "LPP", ucapi.LoadLimit{
+				IsActive: restoreLimit.IsActive,
+				Duration: restoreLimit.Duration / time.Second,
+				Value:    restoreLimit.Value,
+			})
 		})
 		
 		fmt.Println("Set auto-restore timer for production limit (10 minutes)")
 	}
-}
-
-func (h *controlbox) sendProductiomFailsafeLimit(entity spineapi.EntityRemoteInterface) {
-	msgCounter, err := h.uclpp.WriteFailsafeProductionActivePowerLimit(entity, h.productionFailsafeLimits.Value)
-	if err != nil {
-		fmt.Println("Failed to send consumption limit", err)
-		return
-	}
-	fmt.Println("Sent production limit to", entity.Device().Ski(), "with msgCounter", msgCounter)
-}
-
-func (h *controlbox) sendProductiomFailsafeDuration(entity spineapi.EntityRemoteInterface) {
-	msgCounter, err := h.uclpp.WriteFailsafeDurationMinimum(entity, h.productionFailsafeLimits.Duration)
-	if err != nil {
-		fmt.Println("Failed to send consumption limit", err)
-		return
-	}
-	fmt.Println("Sent production limit to", entity.Device().Ski(), "with msgCounter", msgCounter)
 }
 
 func (h *controlbox) readProductionNominalMax(entity spineapi.EntityRemoteInterface) {
@@ -793,8 +795,8 @@ func (h *controlbox) OnLPPEvent(ski string, device spineapi.DeviceRemoteInterfac
 
 			// h.readProductionNominalMax(entity)
 			h.sendProductionLimit(entity)
-			h.sendProductiomFailsafeLimit(entity)
-			h.sendProductiomFailsafeDuration(entity)
+			h.sendProductionFailsafeLimit(entity)
+			h.sendProductionFailsafeDuration(entity)
 		})
 	case lpp.DataUpdateLimit:
 		if currentLimit, err := h.uclpp.ProductionLimit(entity); err == nil {
@@ -1105,6 +1107,13 @@ func reader(h *controlbox, ws *websocket.Conn) {
 			for _, remoteEntityScenario := range h.uclpc.RemoteEntitiesScenarios() {
 				h.sendConsumptionLimit(remoteEntityScenario.Entity)
 			}
+			
+			// 立即发送更新的状态给前端
+			frontend.sendLimit(GetConsumptionLimit, "LPC", ucapi.LoadLimit{
+				IsActive: h.consumptionLimits.IsActive,
+				Duration: h.consumptionLimits.Duration / time.Second,
+				Value:    h.consumptionLimits.Value,
+			})
 		} else if data.Type == SetProductionLimit {
 			limit := data.Limit
 
@@ -1115,6 +1124,13 @@ func reader(h *controlbox, ws *websocket.Conn) {
 			for _, remoteEntityScenario := range h.uclpp.RemoteEntitiesScenarios() {
 				h.sendProductionLimit(remoteEntityScenario.Entity)
 			}
+			
+			// 立即发送更新的状态给前端
+			frontend.sendLimit(GetProductionLimit, "LPP", ucapi.LoadLimit{
+				IsActive: h.productionLimits.IsActive,
+				Duration: h.productionLimits.Duration / time.Second,
+				Value:    h.productionLimits.Value,
+			})
 		} else if data.Type == SetConsumptionFailsafeValue {
 			limit := data.Value
 
