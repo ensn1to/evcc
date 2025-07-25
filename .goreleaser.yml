@@ -1,9 +1,9 @@
-version: 2
+version: 1
 
 dist: release
 release:
   github:
-    owner: evcc-io
+    owner: ensn1to
     name: evcc
   mode: replace
 
@@ -43,12 +43,11 @@ env:
   - CGO_ENABLED=0
 
 archives:
-  - ids:
-      - evcc
-    formats: [tar.gz]
+  - id: evcc
+    format: tar.gz
     format_overrides:
       - goos: windows
-        formats: [zip]
+        format: zip
     files:
       - evcc.dist.yaml
     name_template: >-
@@ -61,7 +60,7 @@ checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  version_template: "{{ .Tag }}-next"
+  name_template: "{{ .Tag }}-next"
 
 changelog:
   sort: asc
@@ -103,7 +102,7 @@ nfpms:
 
 brews:
   - repository:
-      owner: evcc-io
+      owner: ensn1to
       name: homebrew-tap
     commit_author:
       name: andig
