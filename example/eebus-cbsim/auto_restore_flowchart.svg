@@ -1,0 +1,156 @@
+<svg width="1200" height="1400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .box { fill: #e1f5fe; stroke: #0277bd; stroke-width: 2; }
+      .decision { fill: #fff3e0; stroke: #f57c00; stroke-width: 2; }
+      .process { fill: #e8f5e8; stroke: #388e3c; stroke-width: 2; }
+      .timer { fill: #fce4ec; stroke: #c2185b; stroke-width: 2; }
+      .text { font-family: Arial, sans-serif; font-size: 12px; text-anchor: middle; }
+      .title { font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-anchor: middle; }
+      .arrow { stroke: #333; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+  
+  <!-- Title -->
+  <text x="600" y="30" class="title">EEBUS Controlbox 自动恢复流程图</text>
+  
+  <!-- Start -->
+  <rect x="520" y="60" width="160" height="40" rx="20" class="box"/>
+  <text x="600" y="85" class="text">开始: 发送限制请求</text>
+  
+  <!-- sendConsumptionLimit/sendProductionLimit -->
+  <rect x="480" y="130" width="240" height="60" class="process"/>
+  <text x="600" y="155" class="text">sendConsumptionLimit() 或</text>
+  <text x="600" y="175" class="text">sendProductionLimit() 被调用</text>
+  
+  <!-- Send limit to entity -->
+  <rect x="480" y="220" width="240" height="40" class="process"/>
+  <text x="600" y="245" class="text">发送限制到远程实体</text>
+  
+  <!-- Check if limit is active -->
+  <polygon points="600,290 680,320 600,350 520,320" class="decision"/>
+  <text x="600" y="325" class="text">限制是否激活?</text>
+  
+  <!-- No - End -->
+  <rect x="320" y="300" width="120" height="40" rx="20" class="box"/>
+  <text x="380" y="325" class="text">结束 (无定时器)</text>
+  
+  <!-- Yes - Stop previous timer -->
+  <rect x="750" y="300" width="200" height="60" class="timer"/>
+  <text x="850" y="325" class="text">停止之前的定时器</text>
+  <text x="850" y="345" class="text">(如果存在)</text>
+  
+  <!-- Set 10-minute timer -->
+  <rect x="750" y="390" width="200" height="60" class="timer"/>
+  <text x="850" y="415" class="text">设置10分钟定时器</text>
+  <text x="850" y="435" class="text">time.AfterFunc()</text>
+  
+  <!-- Timer callback starts -->
+  <rect x="750" y="480" width="200" height="40" class="process"/>
+  <text x="850" y="505" class="text">10分钟后定时器触发</text>
+  
+  <!-- Create restore limit -->
+  <rect x="750" y="550" width="200" height="60" class="process"/>
+  <text x="850" y="575" class="text">创建恢复限制</text>
+  <text x="850" y="595" class="text">(IsActive: false)</text>
+  
+  <!-- Update local state -->
+  <rect x="750" y="640" width="200" height="40" class="process"/>
+  <text x="850" y="665" class="text">更新本地状态</text>
+  
+  <!-- Send restore to all entities -->
+  <rect x="750" y="710" width="200" height="60" class="process"/>
+  <text x="850" y="735" class="text">发送恢复限制到</text>
+  <text x="850" y="755" class="text">所有连接的实体</text>
+  
+  <!-- Notify frontend -->
+  <rect x="750" y="800" width="200" height="40" class="process"/>
+  <text x="850" y="825" class="text">通知前端界面更新</text>
+  
+  <!-- Auto-restore complete -->
+  <rect x="750" y="870" width="200" height="40" rx="20" class="box"/>
+  <text x="850" y="895" class="text">自动恢复完成</text>
+  
+  <!-- Shutdown process -->
+  <rect x="100" y="550" width="200" height="60" class="timer"/>
+  <text x="200" y="575" class="text">程序关闭时</text>
+  <text x="200" y="595" class="text">shutdown() 方法</text>
+  
+  <!-- Stop timers in shutdown -->
+  <rect x="100" y="640" width="200" height="60" class="timer"/>
+  <text x="200" y="665" class="text">停止所有定时器</text>
+  <text x="200" y="685" class="text">防止资源泄漏</text>
+  
+  <!-- Concurrent access warning -->
+  <rect x="100" y="950" width="300" height="80" class="decision"/>
+  <text x="250" y="975" class="text">⚠️ 潜在问题:</text>
+  <text x="250" y="995" class="text">定时器回调中的竞态条件</text>
+  <text x="250" y="1015" class="text">(缺少互斥锁保护)</text>
+  
+  <!-- Error handling note -->
+  <rect x="450" y="950" width="300" height="80" class="decision"/>
+  <text x="600" y="975" class="text">⚠️ 改进建议:</text>
+  <text x="600" y="995" class="text">增加错误重试机制</text>
+  <text x="600" y="1015" class="text">和网络断开处理</text>
+  
+  <!-- Timer management note -->
+  <rect x="800" y="950" width="300" height="80" class="decision"/>
+  <text x="950" y="975" class="text">✅ 正确实现:</text>
+  <text x="950" y="995" class="text">定时器清理和</text>
+  <text x="950" y="1015" class="text">优雅关闭机制</text>
+  
+  <!-- Arrows -->
+  <line x1="600" y1="100" x2="600" y2="130" class="arrow"/>
+  <line x1="600" y1="190" x2="600" y2="220" class="arrow"/>
+  <line x1="600" y1="260" x2="600" y2="290" class="arrow"/>
+  
+  <!-- No branch -->
+  <line x1="520" y1="320" x2="440" y2="320" class="arrow"/>
+  <text x="480" y="315" class="text">否</text>
+  
+  <!-- Yes branch -->
+  <line x1="680" y1="320" x2="750" y2="320" class="arrow"/>
+  <text x="715" y="315" class="text">是</text>
+  
+  <line x1="850" y1="360" x2="850" y2="390" class="arrow"/>
+  <line x1="850" y1="450" x2="850" y2="480" class="arrow"/>
+  <line x1="850" y1="520" x2="850" y2="550" class="arrow"/>
+  <line x1="850" y1="610" x2="850" y2="640" class="arrow"/>
+  <line x1="850" y1="680" x2="850" y2="710" class="arrow"/>
+  <line x1="850" y1="770" x2="850" y2="800" class="arrow"/>
+  <line x1="850" y1="840" x2="850" y2="870" class="arrow"/>
+  
+  <!-- Shutdown flow -->
+  <line x1="200" y1="610" x2="200" y2="640" class="arrow"/>
+  
+  <!-- Connection to shutdown from timer -->
+  <line x1="750" y1="420" x2="300" y2="420" class="arrow" stroke-dasharray="5,5"/>
+  <line x1="300" y1="420" x2="300" y2="550" class="arrow" stroke-dasharray="5,5"/>
+  <text x="525" y="415" class="text" style="font-size: 10px;">程序关闭时</text>
+  
+  <!-- Legend -->
+  <rect x="50" y="1100" width="1100" height="120" fill="none" stroke="#666" stroke-width="1"/>
+  <text x="600" y="1125" class="title">图例说明</text>
+  
+  <rect x="80" y="1140" width="60" height="20" class="process"/>
+  <text x="150" y="1155" class="text" style="text-anchor: start;">处理步骤</text>
+  
+  <polygon points="280,1140 320,1150 280,1160 240,1150" class="decision"/>
+  <text x="330" y="1155" class="text" style="text-anchor: start;">判断条件</text>
+  
+  <rect x="450" y="1140" width="60" height="20" class="timer"/>
+  <text x="520" y="1155" class="text" style="text-anchor: start;">定时器操作</text>
+  
+  <rect x="650" y="1140" width="60" height="20" class="box"/>
+  <text x="720" y="1155" class="text" style="text-anchor: start;">开始/结束</text>
+  
+  <line x1="850" y1="1150" x2="900" y2="1150" class="arrow"/>
+  <text x="910" y="1155" class="text" style="text-anchor: start;">执行流向</text>
+  
+  <line x1="850" y1="1170" x2="900" y2="1170" class="arrow" stroke-dasharray="5,5"/>
+  <text x="910" y="1175" class="text" style="text-anchor: start;">关闭时清理</text>
+  
+</svg>
