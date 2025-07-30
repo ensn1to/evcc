@@ -1067,6 +1067,7 @@ func (site *Site) Run(stopC chan struct{}, interval time.Duration) {
 
 	site.update(<-loadpointChan) // start immediately
 
+	// 可以作为整个系统功率更新的入口保持不变，更新site.update的方法，检查loadpointChan为空时，也去更新其他负载的功率
 	for tick := time.Tick(interval); ; {
 		select {
 		case <-tick:
