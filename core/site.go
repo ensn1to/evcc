@@ -22,6 +22,7 @@ import (
 	"github.com/evcc-io/evcc/core/prioritizer"
 	"github.com/evcc-io/evcc/core/session"
 	"github.com/evcc-io/evcc/core/site"
+	"github.com/evcc-io/evcc/core/sitepower"
 	"github.com/evcc-io/evcc/core/soc"
 	"github.com/evcc-io/evcc/core/vehicle"
 	"github.com/evcc-io/evcc/push"
@@ -102,6 +103,9 @@ type Site struct {
 	stats       *Stats                   // Stats
 	fcstEnergy  *meterEnergy
 	pvEnergy    map[string]*meterEnergy
+
+	// sitePower storage
+	sitePowerScheduler *sitepower.Scheduler // SitePower定时存储调度器
 
 	// cached state
 	gridPower                float64         // Grid power
@@ -240,12 +244,31 @@ func (site *Site) Boot(log *util.Logger, loadpoints []*Loadpoint, tariffs *tarif
 		site.log.WARN.Println("`MaxGridSupplyWhileBatteryCharging` is deprecated- use `maxACPower` in pv configuration instead")
 	}
 
+	// 初始化sitePower存储
+	if db.Instance != nil {
+		// 直接使用evcc的数据库实例，自动创建sitepower表
+		sitePowerDB, err := sitepower.NewStore(db.Instance)
+		if err != nil {
+			site.log.ERROR.Printf("failed to initialize sitePower storage: %v", err)
+		} else {
+			// 创建15分钟间隔的调度器
+			site.sitePowerScheduler = sitepower.NewScheduler(sitePowerDB, 15*time.Minute)
+			site.sitePowerScheduler.Start()
+			site.log.INFO.Println("sitePower storage initialized with 15-minute interval")
+		}
+	}
+
 	// revert battery mode on shutdown
 	shutdown.Register(func() {
 		if mode := site.GetBatteryMode(); batteryModeModified(mode) {
 			if err := site.applyBatteryMode(api.BatteryNormal); err != nil {
 				site.log.ERROR.Println("battery mode:", err)
 			}
+		}
+		
+		// 停止sitePower调度器
+		if site.sitePowerScheduler != nil {
+			site.sitePowerScheduler.Stop()
 		}
 	})
 
@@ -929,6 +952,11 @@ func (site *Site) update(lp updater) {
 	site.updateBatteryMode(batteryGridChargeActive, rate)
 
 	if sitePower, batteryBuffered, batteryStart, err := site.sitePower(totalChargePower, flexiblePower); err == nil {
+		// 更新sitePower到调度器（用于定时存储）
+		if site.sitePowerScheduler != nil {
+			site.sitePowerScheduler.UpdatePower(site.GetTitle(), sitePower/1000.0) // 转换为kW
+		}
+
 		// ignore negative pvPower values as that means it is not an energy source but consumption
 		// 剩余可用负载功率： 电网+光伏+电池放电 - 当前总充电
 		homePower := site.gridPower + max(0, site.pvPower) + site.batteryPower - totalChargePower
