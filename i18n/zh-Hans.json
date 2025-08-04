@@ -530,9 +530,34 @@
     "github": "GitHub",
     "login": "车辆登录",
     "logout": "登出",
+    "monitoring": "监控",
     "nativeSettings": "更换服务器",
     "needHelp": "需要帮助？",
     "sessions": "充电会话"
+  },
+  "monitoring": {
+    "title": "监控",
+    "dataType": {
+      "sitepower": "站点功率",
+      "battery": "电池充电"
+    },
+    "chartTitle": {
+      "sitepower": "站点功率数据",
+      "battery": "电池充电数据"
+    },
+    "loading": "加载中...",
+    "noData": "所选日期没有可用数据。",
+    "statistics": "统计信息",
+    "stats": {
+      "max": "最大值",
+      "min": "最小值",
+      "avg": "平均值",
+      "total": "数据点数"
+    },
+    "table": {
+      "time": "时间",
+      "power": "功率"
+    }
   },
   "help": {
     "discussionsButton": "GitHub 讨论",

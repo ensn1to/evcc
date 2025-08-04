@@ -106,6 +106,7 @@ type Site struct {
 
 	// sitePower storage
 	sitePowerScheduler *sitepower.Scheduler // SitePower定时存储调度器
+	sitePowerAPI       *sitepower.API       // SitePower API实例
 
 	// cached state
 	gridPower                float64         // Grid power
@@ -251,9 +252,11 @@ func (site *Site) Boot(log *util.Logger, loadpoints []*Loadpoint, tariffs *tarif
 		if err != nil {
 			site.log.ERROR.Printf("failed to initialize sitePower storage: %v", err)
 		} else {
-			// 创建15分钟间隔的调度器
-			site.sitePowerScheduler = sitepower.NewScheduler(sitePowerDB, 15*time.Minute)
+			// 创建1分钟间隔的调度器
+			site.sitePowerScheduler = sitepower.NewScheduler(sitePowerDB, 1*time.Minute)
 			site.sitePowerScheduler.Start()
+			// 创建API实例
+			site.sitePowerAPI = sitepower.NewAPI(sitePowerDB)
 			site.log.INFO.Println("sitePower storage initialized with 15-minute interval")
 		}
 	}
@@ -265,7 +268,7 @@ func (site *Site) Boot(log *util.Logger, loadpoints []*Loadpoint, tariffs *tarif
 				site.log.ERROR.Println("battery mode:", err)
 			}
 		}
-		
+
 		// 停止sitePower调度器
 		if site.sitePowerScheduler != nil {
 			site.sitePowerScheduler.Stop()
@@ -276,6 +279,11 @@ func (site *Site) Boot(log *util.Logger, loadpoints []*Loadpoint, tariffs *tarif
 }
 
 // NewSite creates a Site with sane defaults
+// GetSitePowerAPI 返回sitePower API实例
+func (site *Site) GetSitePowerAPI() *sitepower.API {
+	return site.sitePowerAPI
+}
+
 func NewSite() *Site {
 	site := &Site{
 		log:        util.NewLogger("site"),
