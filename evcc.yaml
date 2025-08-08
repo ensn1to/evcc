@@ -165,9 +165,9 @@ eebus:
       -----END EC PRIVATE KEY-----
 
 
-hems:
-  type: eebus
-  ski: 6b395afa4bee11215df0dfa96d5dc759f9b80ee5  # 外部EEBus设备的SKI (固定)
+# hems:
+#   type: eebus
+#   ski: 6b395afa4bee11215df0dfa96d5dc759f9b80ee5  # 外部EEBus设备的SKI (固定)
 
 circuits:
   - name: main # eindeutiger Name, wird als Referenz für andere Circuits verwendet

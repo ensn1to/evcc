@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	eapi "github.com/evcc-io/evcc/api"
@@ -33,6 +34,32 @@ func (r route) Methods() []string {
 		return []string{r.Method}
 	}
 	return []string{r.Method, http.MethodOptions}
+}
+
+// i18nHandler handles internationalization file requests with language mapping
+func i18nHandler() http.Handler {
+	// Map browser locale codes to actual file names
+	localeFileMap := map[string]string{
+		"zh.json":    "zh-Hans.json",
+		"zh-CN.json": "zh-Hans.json",
+		"zh-TW.json": "zh-Hans.json", // fallback to simplified Chinese
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/i18n/")
+		
+		// Check if we need to map the requested file
+		if mappedFile, exists := localeFileMap[path]; exists {
+			path = mappedFile
+		}
+		
+		// Create a new request with the mapped path
+		newReq := r.Clone(r.Context())
+		newReq.URL.Path = "/" + path
+		
+		// Serve the file using the embedded filesystem
+		http.FileServer(http.FS(assets.I18n)).ServeHTTP(w, newReq)
+	})
 }
 
 // HTTPd wraps an http.Server and adds the root router
@@ -92,7 +119,7 @@ func NewHTTPd(addr string, hub *SocketHub, customCssFile string) *HTTPd {
 		static.PathPrefix("/" + dir).Handler(http.FileServer(http.FS(assets.Web)))
 	}
 
-	static.PathPrefix("/i18n").Handler(http.StripPrefix("/i18n", http.FileServer(http.FS(assets.I18n))))
+	static.PathPrefix("/i18n").Handler(i18nHandler())
 
 	srv := &HTTPd{
 		Server: &http.Server{
@@ -125,6 +152,13 @@ func (s *HTTPd) RegisterSiteHandlers(site site.API, valueChan chan<- util.Param)
 	api.Use(handlers.CORS(
 		handlers.AllowedHeaders([]string{"Content-Type"}),
 	))
+
+	// register sitepower API routes if available
+	if coreSite, ok := site.(*core.Site); ok {
+		if coreSite.GetSitePowerAPI() != nil {
+			coreSite.GetSitePowerAPI().RegisterRoutes(router)
+		}
+	}
 
 	// site api
 	routes := map[string]route{

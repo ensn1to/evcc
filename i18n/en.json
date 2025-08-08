@@ -542,9 +542,34 @@
     "github": "GitHub",
     "login": "Vehicle Logins",
     "logout": "Logout",
+    "monitoring": "Monitoring",
     "nativeSettings": "Change Server",
     "needHelp": "Need Help?",
     "sessions": "Charging Sessions"
+  },
+  "monitoring": {
+    "title": "Monitoring",
+    "dataType": {
+      "sitepower": "Site Power",
+      "battery": "Battery Charging"
+    },
+    "chartTitle": {
+      "sitepower": "Site Power Data",
+      "battery": "Battery Charging Data"
+    },
+    "loading": "Loading...",
+    "noData": "No data available for the selected date.",
+    "statistics": "Statistics",
+    "stats": {
+      "max": "Maximum",
+      "min": "Minimum",
+      "avg": "Average",
+      "total": "Data Points"
+    },
+    "table": {
+      "time": "Time",
+      "power": "Power"
+    }
   },
   "help": {
     "discussionsButton": "GitHub discussions",

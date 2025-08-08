@@ -84,9 +84,18 @@ export function setI18nLanguage(i18n, locale) {
   document.querySelector("html").setAttribute("lang", locale);
 }
 
+// Map browser locale codes to actual file names
+const LOCALE_FILE_MAP = {
+  'zh': 'zh-Hans',
+  'zh-CN': 'zh-Hans',
+  'zh-TW': 'zh-Hans', // fallback to simplified Chinese if traditional is not available
+};
+
 async function loadLocaleMessages(i18n, locale) {
   try {
-    const response = await i18nApi.get(`${locale}.json`, { params: { v: window.evcc?.version } });
+    // Map locale to actual file name if needed
+    const fileName = LOCALE_FILE_MAP[locale] || locale;
+    const response = await i18nApi.get(`${fileName}.json`, { params: { v: window.evcc?.version } });
     i18n.setLocaleMessage(locale, response.data);
   } catch (e) {
     console.error(`unable to load translation for [${locale}]`, e);

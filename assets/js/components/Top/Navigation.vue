@@ -27,6 +27,11 @@
 					{{ $t("header.sessions") }}
 				</router-link>
 			</li>
+			<li>
+				<router-link class="dropdown-item" to="/monitoring" active-class="active">
+					{{ $t("header.monitoring") }}
+				</router-link>
+			</li>
 			<li><hr class="dropdown-divider" /></li>
 			<li>
 				<button
